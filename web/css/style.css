@@ -1,3 +1,7 @@
+/* ===============================
+   CSS Variablen (Farben, Abstände, Animationen)
+   Ändere hier die globalen Stile
+   =============================== */
 :root {
   --header-height: 60px;
   --transition-main: cubic-bezier(0.4, 0, 0.2, 1);
@@ -224,6 +228,8 @@ nav ul {
 
 nav li {
   margin-right: 20px;
+  display: flex;
+  align-items: center;
 }
 
 nav a {
@@ -246,26 +252,63 @@ nav a:focus-visible {
   outline: 2px solid transparent;
 }
 
-.darkmode-toggle {
-  font-family: var(--font-main);
-  font-size: 16px;
-  font-weight: 500;
-  background: transparent;
-  color: var(--textColor);
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  transform: translateY(0);
-  transition:
-    color 0.25s ease,
-    transform 0.25s ease;
+/* ===============================
+   Dark Mode Toggle (Schalter)
+   iOS-Style Toggle mit Rahmen
+   =============================== */
+
+/* Versteckte Checkbox */
+.darkmode-checkbox {
+  display: none;
 }
 
-.darkmode-toggle:hover,
-.darkmode-toggle:focus-visible {
-  color: #fff;
-  transform: translateY(-2px);
-  outline: 2px solid transparent;
+/* Der Toggle-Switch - sichtbarer Teil */
+.darkmode-toggle {
+  display: inline-block;
+  width: 52px;
+  height: 26px;
+  background: #e0e0e0;
+  border-radius: 13px;
+  border: 2px solid #999;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  vertical-align: middle;
+  margin-left: 8px;
+}
+
+/* Der weiße Punkt (Slider) */
+.darkmode-toggle::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  border: 1px solid #999;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
+}
+
+/* Dark Mode AKTIV */
+.darkmode-checkbox:checked + .darkmode-toggle {
+  background: #005b9c;
+  border-color: #004a80;
+}
+
+.darkmode-checkbox:checked + .darkmode-toggle::before {
+  transform: translateX(26px);
+  background: #fff;
+  border-color: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Focus-Style für Accessibility */
+.darkmode-checkbox:focus + .darkmode-toggle {
+  outline: 2px solid #005b9c;
+  outline-offset: 2px;
 }
 
 .dark-mode {

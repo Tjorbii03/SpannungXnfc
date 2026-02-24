@@ -1,9 +1,14 @@
 <!doctype html>
+<!--
+  M5Stack Spannungsmesser - Startseite
+  Zeigt Live-Daten vom M5StickC Empfänger
+-->
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
     <title>M5Stack Spannungsmesser</title>
 
+    <!-- Google Fonts: Inter (Ladeschutz für Performance) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
@@ -11,16 +16,21 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <!-- Eigenes CSS -->
     <link rel="stylesheet" href="css/style.css" />
   </head>
 
   <body>
+    <!-- WCAG: Skip-Link für Screenreader -->
     <a href="#main" class="skip-link">Zum Inhalt springen</a>
 
+    <!-- Header mit Navigation -->
     <header>
       <div class="header-content">
+        <!-- Hintergrundbalken (wird sichtbar beim Öffnen) -->
         <div class="menubalken" id="menubalken" aria-hidden="true"></div>
 
+        <!-- Hamburger-Menü Button -->
         <button
           id="menuButton"
           class="menu-button"
@@ -30,6 +40,7 @@
           aria-describedby="menuHint"
           data-tooltip="Menü öffnen (Shortcut: M)"
         >
+          <!-- Hamburger Icon (3 Striche) -->
           <svg viewBox="0 0 100 80" fill id="fillColor" aria-hidden="true">
             <rect width="100" height="10" rx="5"></rect>
             <rect y="30" width="100" height="10" rx="5"></rect>
@@ -37,6 +48,7 @@
           </svg>
         </button>
 
+        <!-- Hauptnavigation -->
         <nav id="mainNav" aria-hidden="true">
           <ul>
             <li><a href="index.html">Home</a></li>
@@ -44,26 +56,30 @@
             <li><a href="pages/veraltete-daten.html">Veraltete Daten</a></li>
             <li><a href="pages/stack-zuordnung.html">Stack Zuordnung</a></li>
             <li>
-              <button
-                class="darkmode-toggle"
-                type="button"
-                onclick="toggleDarkMode()"
-              >
-                Dark Mode
-              </button>
+              <!-- Dark Mode Toggle (Checkbox-Switch) -->
+              <input
+                type="checkbox"
+                id="darkmode-toggle"
+                class="darkmode-checkbox"
+              />
+              <label for="darkmode-toggle" class="darkmode-toggle"></label>
             </li>
           </ul>
         </nav>
       </div>
     </header>
 
+    <!-- Hauptinhalt -->
     <main id="main" tabindex="-1"></main>
 
+    <!-- Screenreader-Hinweise -->
     <span id="menuHint" hidden>Shortcut: Taste M</span>
     <div aria-live="polite" class="sr-only" id="menuStatus" hidden></div>
 
+    <!-- Content Box: Live-Daten -->
     <div class="box">
       <h2>M5 Atom Live Daten</h2>
+      <!-- Wert wird per JavaScript alle 0.5s aktualisiert -->
       <div id="wert">Lade...</div>
     </div>
 
@@ -84,6 +100,22 @@
       const links = nav.querySelectorAll("a");
       const status = document.getElementById("menuStatus");
       const menubalken = document.getElementById("menubalken");
+      const darkmodeToggle = document.getElementById("darkmode-toggle");
+
+      function initDarkMode() {
+        const savedTheme = localStorage.getItem("theme");
+        if (savedTheme === "dark") {
+          document.body.classList.add("dark-mode");
+          darkmodeToggle.checked = true;
+        }
+      }
+
+      function toggleDarkMode() {
+        document.body.classList.toggle("dark-mode");
+        const isDark = document.body.classList.contains("dark-mode");
+        darkmodeToggle.checked = isDark;
+        localStorage.setItem("theme", isDark ? "dark" : "light");
+      }
 
       function openMenu() {
         menuButton.classList.add("open");
@@ -106,14 +138,9 @@
         status.textContent = "Menü geschlossen";
       }
 
-      function toggleDarkMode() {
-        var element = document.body;
-        element.classList.toggle("dark-mode");
-        const themeToggleButton = document.getElementById("darkmode-button");
-        const savedTheme = localStorage.getItem("theme");
-        if (savedTheme === "dark") {
-        }
-      }
+      initDarkMode();
+
+      darkmodeToggle.addEventListener("change", toggleDarkMode);
 
       menuButton.addEventListener("click", () => {
         menuButton.classList.contains("open") ? closeMenu() : openMenu();
