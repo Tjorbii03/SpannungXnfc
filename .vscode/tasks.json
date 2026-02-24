@@ -1,0 +1,26 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "compile-java",
+            "type": "shell",
+            "command": "javac",
+            "args": ["-cp", "lib/*", "M5Receiver.java"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "run-java",
+            "type": "shell",
+            "command": "java",
+            "args": ["-cp", ".:lib/*", "M5Receiver"],
+            "dependsOn": "compile-java",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        }
+    ]
+}
