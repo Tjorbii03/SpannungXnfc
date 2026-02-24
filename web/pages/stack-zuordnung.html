@@ -15,42 +15,43 @@
 <a href="#main" class="skip-link">Zum Inhalt springen</a>
 
 <header>
-    <div class="menubalken" id="menubalken" aria-hidden="true"></div>
+    <div class="header-content">
+        <div class="menubalken" id="menubalken" aria-hidden="true"></div>
 
-    <button
-        id="menuButton"
-        class="menu-button"
-        aria-label="Navigation öffnen (Shortcut: M)"
-        aria-expanded="false"
-        aria-controls="mainNav"
-        aria-describedby="menuHint"
-        data-tooltip="Menü öffnen (Shortcut: M)"
-    >
-        <svg viewBox="0 0 100 80" fill id="fillColor" aria-hidden="true">
-            <rect width="100" height="10" rx="5"></rect>
-            <rect y="30" width="100" height="10" rx="5"></rect>
-            <rect y="60" width="100" height="10" rx="5"></rect>
-        </svg>
-    </button>
+        <button
+            id="menuButton"
+            class="menu-button"
+            aria-label="Navigation öffnen (Shortcut: M)"
+            aria-expanded="false"
+            aria-controls="mainNav"
+            aria-describedby="menuHint"
+            data-tooltip="Menü öffnen (Shortcut: M)"
+        >
+            <svg viewBox="0 0 100 80" fill id="fillColor" aria-hidden="true">
+                <rect width="100" height="10" rx="5"></rect>
+                <rect y="30" width="100" height="10" rx="5"></rect>
+                <rect y="60" width="100" height="10" rx="5"></rect>
+            </svg>
+        </button>
 
-    <nav id="mainNav" aria-hidden="true">
-        <ul>
-            <li><a href="../index.html">Home</a></li>
-            <li><a href="stacks.html">Stacks</a></li>
-            <li><a href="veraltete-daten.html">Veraltete Daten</a></li>
-            <li><a href="stack-zuordnung.html">Stack Zuordnung</a></li>
-        </ul>
-    </nav>
-
-    <button
-        id="darkmode-button"
-        class="darkmode-button"
-        type="button"
-        aria-disabled="true"
-        onclick="toggleDarkMode()"
-    >
-        Dark Mode
-    </button>
+        <nav id="mainNav" aria-hidden="true">
+            <ul>
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="stacks.html">Stacks</a></li>
+                <li><a href="veraltete-daten.html">Veraltete Daten</a></li>
+                <li><a href="stack-zuordnung.html">Stack Zuordnung</a></li>
+                <li>
+                    <button
+                        class="darkmode-toggle"
+                        type="button"
+                        onclick="toggleDarkMode()"
+                    >
+                        Dark Mode
+                    </button>
+                </li>
+            </ul>
+        </nav>
+    </div>
 </header>
 
 <main id="main" tabindex="-1">

@@ -1,155 +1,161 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>M5Stack Spannungsmesser</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
-</head>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
 
-<body>
-<a href="#main" class="skip-link">Zum Inhalt springen</a>
+  <body>
+    <a href="#main" class="skip-link">Zum Inhalt springen</a>
 
-<header>
-    <div class="menubalken" id="menubalken" aria-hidden="true"></div>
+    <header>
+      <div class="header-content">
+        <div class="menubalken" id="menubalken" aria-hidden="true"></div>
 
-    <button
-        id="menuButton"
-        class="menu-button"
-        aria-label="Navigation öffnen (Shortcut: M)"
-        aria-expanded="false"
-        aria-controls="mainNav"
-        aria-describedby="menuHint"
-        data-tooltip="Menü öffnen (Shortcut: M)"
-    >
-        <svg viewBox="0 0 100 80" fill id="fillColor" aria-hidden="true">
+        <button
+          id="menuButton"
+          class="menu-button"
+          aria-label="Navigation öffnen (Shortcut: M)"
+          aria-expanded="false"
+          aria-controls="mainNav"
+          aria-describedby="menuHint"
+          data-tooltip="Menü öffnen (Shortcut: M)"
+        >
+          <svg viewBox="0 0 100 80" fill id="fillColor" aria-hidden="true">
             <rect width="100" height="10" rx="5"></rect>
             <rect y="30" width="100" height="10" rx="5"></rect>
             <rect y="60" width="100" height="10" rx="5"></rect>
-        </svg>
-    </button>
+          </svg>
+        </button>
 
-    <nav id="mainNav" aria-hidden="true">
-        <ul>
+        <nav id="mainNav" aria-hidden="true">
+          <ul>
             <li><a href="index.html">Home</a></li>
             <li><a href="pages/stacks.html">Stacks</a></li>
             <li><a href="pages/veraltete-daten.html">Veraltete Daten</a></li>
             <li><a href="pages/stack-zuordnung.html">Stack Zuordnung</a></li>
-        </ul>
-    </nav>
+            <li>
+              <button
+                class="darkmode-toggle"
+                type="button"
+                onclick="toggleDarkMode()"
+              >
+                Dark Mode
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </header>
 
-    <button
-        id="darkmode-button"
-        class="darkmode-button"
-        type="button"
-        aria-disabled="true"
-        onclick="toggleDarkMode()"
-    >
-        Dark Mode
-    </button>
-</header>
+    <main id="main" tabindex="-1"></main>
 
-<main id="main" tabindex="-1"></main>
+    <span id="menuHint" hidden>Shortcut: Taste M</span>
+    <div aria-live="polite" class="sr-only" id="menuStatus" hidden></div>
 
-<span id="menuHint" hidden>Shortcut: Taste M</span>
-<div aria-live="polite" class="sr-only" id="menuStatus" hidden></div>
+    <div class="box">
+      <h2>M5 Atom Live Daten</h2>
+      <div id="wert">Lade...</div>
+    </div>
 
-<div class="box">
-    <h2>M5 Atom Live Daten</h2>
-    <div id="wert">Lade...</div>
-</div>
+    <script>
+      function update() {
+        fetch("/data")
+          .then((r) => r.text())
+          .then((t) => (document.getElementById("wert").innerText = t))
+          .catch(
+            (e) =>
+              (document.getElementById("wert").innerText = "Server-Fehler"),
+          );
+      }
+      setInterval(update, 500);
 
-<script>
-    function update() {
-        fetch('/data')
-            .then(r => r.text())
-            .then(t => document.getElementById('wert').innerText = t)
-            .catch(e => document.getElementById('wert').innerText = "Server-Fehler");
-    }
-    setInterval(update, 500);
+      const menuButton = document.getElementById("menuButton");
+      const nav = document.getElementById("mainNav");
+      const links = nav.querySelectorAll("a");
+      const status = document.getElementById("menuStatus");
+      const menubalken = document.getElementById("menubalken");
 
-    const menuButton = document.getElementById('menuButton');
-    const nav = document.getElementById('mainNav');
-    const links = nav.querySelectorAll('a');
-    const status = document.getElementById('menuStatus');
-    const menubalken = document.getElementById('menubalken');
-
-    function openMenu() {
-        menuButton.classList.add('open');
-        nav.classList.add('open');
-        menubalken.classList.add('open');
-        menuButton.setAttribute('aria-expanded', 'true');
-        nav.setAttribute('aria-hidden', 'false');
-        menubalken.setAttribute('aria-expanded', 'true');
-        status.textContent = 'Menü geöffnet';
+      function openMenu() {
+        menuButton.classList.add("open");
+        nav.classList.add("open");
+        menubalken.classList.add("open");
+        menuButton.setAttribute("aria-expanded", "true");
+        nav.setAttribute("aria-hidden", "false");
+        menubalken.setAttribute("aria-expanded", "true");
+        status.textContent = "Menü geöffnet";
         links.length && links[0].focus();
-    }
+      }
 
-    function closeMenu() {
-        menuButton.classList.remove('open');
-        nav.classList.remove('open');
-        menubalken.classList.remove('open');
-        menuButton.setAttribute('aria-expanded', 'false');
-        nav.setAttribute('aria-hidden', 'true');
-        menubalken.setAttribute('aria-hidden', 'false');
-        status.textContent = 'Menü geschlossen';
-    }
+      function closeMenu() {
+        menuButton.classList.remove("open");
+        nav.classList.remove("open");
+        menubalken.classList.remove("open");
+        menuButton.setAttribute("aria-expanded", "false");
+        nav.setAttribute("aria-hidden", "true");
+        menubalken.setAttribute("aria-hidden", "false");
+        status.textContent = "Menü geschlossen";
+      }
 
-    function toggleDarkMode() {
+      function toggleDarkMode() {
         var element = document.body;
         element.classList.toggle("dark-mode");
-        const themeToggleButton = document.getElementById('darkmode-button');
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark') {
+        const themeToggleButton = document.getElementById("darkmode-button");
+        const savedTheme = localStorage.getItem("theme");
+        if (savedTheme === "dark") {
         }
-    }
+      }
 
-    menuButton.addEventListener('click', () => {
-        menuButton.classList.contains('open') ? closeMenu() : openMenu();
-    });
+      menuButton.addEventListener("click", () => {
+        menuButton.classList.contains("open") ? closeMenu() : openMenu();
+      });
 
-    nav.addEventListener('keydown', (e) => {
-        if (e.key !== 'Tab') return;
+      nav.addEventListener("keydown", (e) => {
+        if (e.key !== "Tab") return;
 
         const first = links[0];
         const last = links[links.length - 1];
 
         if (e.shiftKey && document.activeElement === first) {
-            e.preventDefault();
-            last.focus();
+          e.preventDefault();
+          last.focus();
         } else if (!e.shiftKey && document.activeElement === last) {
-            e.preventDefault();
-            first.focus();
+          e.preventDefault();
+          first.focus();
         }
-    });
+      });
 
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && menuButton.classList.contains('open')) {
-            closeMenu();
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && menuButton.classList.contains("open")) {
+          closeMenu();
         }
-    });
+      });
 
-    document.addEventListener('keydown', (e) => {
+      document.addEventListener("keydown", (e) => {
         const active = document.activeElement;
         if (
-            e.key.toLowerCase() === 'm' &&
-            !['INPUT', 'TEXTAREA'].includes(active.tagName) &&
-            !active.isContentEditable
+          e.key.toLowerCase() === "m" &&
+          !["INPUT", "TEXTAREA"].includes(active.tagName) &&
+          !active.isContentEditable
         ) {
-            menuButton.click();
+          menuButton.click();
         }
-    });
+      });
 
-    document.addEventListener('click', (e) => {
+      document.addEventListener("click", (e) => {
         if (!nav.contains(e.target) && !menuButton.contains(e.target)) {
-            closeMenu();
+          closeMenu();
         }
-    });
-</script>
-
-</body>
+      });
+    </script>
+  </body>
 </html>
