@@ -1,241 +1,274 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
+
 <head>
-    <meta charset="UTF-8">
-    <title>Stack Zuordnung - M5Stack Spannungsmesser</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
-    <style>
-        .search-container {
-            margin: 25px 0;
-            text-align: center;
-            max-width: 700px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        #searchInput {
-            padding: 12px 16px;
-            width: 100%;
-            max-width: 560px;
-            font-size: 16.5px;
-            border: 2px solid #383838;
-            border-radius: 10px;
-            background: white;
-            color: #222;
-            transition: all 0.3s ease;
-        }
-        #searchInput:focus {
-            outline: none;
-            border-color: #005b9c;
-            box-shadow: 0 0 0 3px rgba(0, 91, 156, 0.2);
-        }
+  <meta charset="UTF-8" />
+  <title>Stack Zuordnung - M5Stack Spannungsmesser</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .search-container {
+      margin: 25px 0;
+      text-align: center;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
 
-        .dark-mode #searchInput {
-            background: rgba(255, 255, 255, 0.07);
-            border-color: #4fc3f7;
-            color: white;
-        }
+    #searchInput {
+      padding: 12px 16px;
+      width: 100%;
+      max-width: 560px;
+      font-size: 16.5px;
+      border: 2px solid #383838;
+      border-radius: 10px;
+      background: white;
+      color: #222;
+      transition: all 0.3s ease;
+    }
 
-        .stack-table {
-            margin-top: 30px;
-            width: 100%;
-            max-width: 950px;
-            margin-left: auto;
-            margin-right: auto;
-            border-collapse: collapse;
-        }
-        .stack-table th, .stack-table td {
-            padding: 14px;
-            border: 1px solid #ccc;
-            text-align: center;
-        }
-        .stack-table th {
-            background: #005b9c;
-            color: white;
-            font-weight: 600;
-        }
-        .dark-mode .stack-table th {
-            background: #1a1a1a;
-            border-color: #444;
-        }
-        .stack-table tr.main-row:hover {
-            background-color: rgba(0, 91, 156, 0.05);
-            cursor: pointer;
-        }
-        .dark-mode .stack-table tr.main-row:hover {
-            background-color: rgba(255, 255, 255, 0.05);
-        }
+    #searchInput:focus {
+      outline: none;
+      border-color: #005b9c;
+      box-shadow: 0 0 0 3px rgba(0, 91, 156, 0.2);
+    }
 
-        /* Historie-Bereich */
-        .history-row {
-            display: none;
-            background-color: #f0f4f7;
-        }
-        .dark-mode .history-row {
-            background-color: #121212;
-        }
-        .history-container {
-            padding: 15px;
-            text-align: left;
-        }
-        .history-list {
-            width: 100%;
-            font-size: 0.9em;
-            border-top: 1px solid #ddd;
-            margin-top: 10px;
-        }
-        .history-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 20px;
-            border-bottom: 1px solid #eee;
-        }
-        .dark-mode .history-item {
-            border-color: #333;
-        }
+    .dark-mode #searchInput {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: #4fc3f7;
+      color: white;
+    }
 
-        .badge-newest {
-            background: #27ae60;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.8em;
-            margin-left: 10px;
-        }
-        .history-btn {
-            background: #005b9c;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.85em;
-        }
-        .history-btn:hover { background: #004577; }
+    .stack-table {
+      margin-top: 30px;
+      width: 100%;
+      max-width: 950px;
+      margin-left: auto;
+      margin-right: auto;
+      border-collapse: collapse;
+    }
 
-        .highlight {
-            background-color: rgba(255, 255, 0, 0.2);
-            font-weight: bold;
-        }
-    </style>
+    .stack-table th,
+    .stack-table td {
+      padding: 14px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+
+    .stack-table th {
+      background: #005b9c;
+      color: white;
+      font-weight: 600;
+    }
+
+    .dark-mode .stack-table th {
+      background: #1a1a1a;
+      border-color: #444;
+    }
+
+    .stack-table tr.main-row:hover {
+      background-color: rgba(0, 91, 156, 0.05);
+      cursor: pointer;
+    }
+
+    .dark-mode .stack-table tr.main-row:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Historie-Bereich */
+    .history-row {
+      display: none;
+      background-color: #f0f4f7;
+    }
+
+    .dark-mode .history-row {
+      background-color: #121212;
+    }
+
+    .history-container {
+      padding: 15px;
+      text-align: left;
+    }
+
+    .history-list {
+      width: 100%;
+      font-size: 0.9em;
+      border-top: 1px solid #ddd;
+      margin-top: 10px;
+    }
+
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 20px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .dark-mode .history-item {
+      border-color: #333;
+    }
+
+    .badge-newest {
+      background: #27ae60;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.8em;
+      margin-left: 10px;
+    }
+
+    .history-btn {
+      background: #005b9c;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.85em;
+    }
+
+    .history-btn:hover {
+      background: #004577;
+    }
+
+    .highlight {
+      background-color: rgba(255, 255, 0, 0.2);
+      font-weight: bold;
+    }
+
+    /* Neuester Eintrag in der Historie */
+    .history-item-latest {
+      background: #e8f5e9;
+    }
+
+    .dark-mode .history-item-latest {
+      background: transparent;
+    }
+  </style>
 </head>
+
 <body>
-    <a href="#main" class="skip-link">Zum Inhalt springen</a>
+  <a href="#main" class="skip-link">Zum Inhalt springen</a>
 
-    <header>
-        <div class="header-content">
-            <div class="menubalken" id="menubalken" aria-hidden="true"></div>
-            <button id="menuButton" class="menu-button"
-                    aria-label="Navigation öffnen (Shortcut: M)"
-                    aria-expanded="false"
-                    aria-controls="mainNav"
-                    aria-describedby="menuHint"
-                    data-tooltip="Menü öffnen (Shortcut: M)">
-                <svg viewBox="0 0 100 80" aria-hidden="true">
-                    <rect width="100" height="10" rx="5"></rect>
-                    <rect y="30" width="100" height="10" rx="5"></rect>
-                    <rect y="60" width="100" height="10" rx="5"></rect>
-                </svg>
-            </button>
-            <nav id="mainNav" aria-hidden="true">
-                <ul>
-                    <li><a href="index.html">Home</a></li>
-                    <li><a href="veraltete-daten.html">Veraltete Daten</a></li>
-                    <li><a href="stack-zuordnung.html">Stack Zuordnung</a></li>
-                    <li>
-                        <input type="checkbox" id="darkmode-toggle" class="darkmode-checkbox" />
-                        <label for="darkmode-toggle" class="darkmode-toggle"></label>
-                    </li>
-                </ul>
-            </nav>
-        </div>
-    </header>
+  <header>
+    <div class="header-content">
+      <div class="menubalken" id="menubalken" aria-hidden="true"></div>
+      <button id="menuButton" class="menu-button" aria-label="Navigation öffnen (Shortcut: M)" aria-expanded="false"
+        aria-controls="mainNav" aria-describedby="menuHint" data-tooltip="Menü öffnen (Shortcut: M)">
+        <svg viewBox="0 0 100 80" aria-hidden="true">
+          <rect width="100" height="10" rx="5"></rect>
+          <rect y="30" width="100" height="10" rx="5"></rect>
+          <rect y="60" width="100" height="10" rx="5"></rect>
+        </svg>
+      </button>
+      <nav id="mainNav" aria-hidden="true">
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="veraltete-daten.html">Veraltete Daten</a></li>
+          <li><a href="stack-zuordnung.html">Stack Zuordnung</a></li>
+          <li>
+            <input type="checkbox" id="darkmode-toggle" class="darkmode-checkbox" />
+            <label for="darkmode-toggle" class="darkmode-toggle"></label>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
 
-    <main id="main" tabindex="-1">
-        <div class="box">
-            <h2>Gegenstände & Historie</h2>
-            <p style="text-align: center; color: #666;">Zeigt den aktuellsten Status an. Klicken für Historie.</p>
+  <main id="main" tabindex="-1">
+    <div class="box">
+      <h2>Stacks</h2>
+      <p style="text-align: center; color: #666">
+        Zeigt den aktuellsten Status an. Klicken für Historie.
+      </p>
 
-            <div class="search-container">
-                <input type="text" id="searchInput" 
-                       placeholder="Nach Kennzeichen oder Nummer suchen..."
-                       autocomplete="off">
-            </div>
+      <div class="search-container">
+        <input type="text" id="searchInput" placeholder="Nach Kennzeichen oder Nummer suchen..." autocomplete="off" />
+      </div>
 
-            <div id="stack-content">
-                <p>Lade Stack-Daten...</p>
-            </div>
-        </div>
-    </main>
+      <div id="stack-content">
+        <p>Lade Stack-Daten...</p>
+      </div>
+    </div>
+  </main>
 
-    <span id="menuHint" hidden>Shortcut: Taste M</span>
-    <div aria-live="polite" class="sr-only" id="menuStatus" hidden></div>
+  <span id="menuHint" hidden>Shortcut: Taste M</span>
+  <div aria-live="polite" class="sr-only" id="menuStatus" hidden></div>
 
-    <script>
-        let rawDataItems = [];
-        let openHistories = new Set(); // Speichert, welche IDs ausgeklappt sind
+  <script>
+    let rawDataItems = [];
+    let openHistories = new Set(); // Speichert, welche IDs ausgeklappt sind
 
-        async function updateStackData() {
-            try {
-                const response = await fetch("/stack_data");
-                const text = await response.text();
-                const lines = text.trim().split('\n').filter(line => line.trim() !== '');
+    async function updateStackData() {
+      try {
+        const response = await fetch("/stack_data");
+        const text = await response.text();
+        const lines = text
+          .trim()
+          .split("\n")
+          .filter((line) => line.trim() !== "");
 
-                rawDataItems = [];
-                lines.forEach(line => {
-                    const parts = line.split(' | ');
-                    if (parts.length >= 5) {
-                        rawDataItems.push({
-                            id: parts[0].replace('ID: ', '').trim(),
-                            kennzeichen: parts[1].replace('K: ', '').trim(),
-                            nummer: parts[2].replace('N: ', '').trim(),
-                            spannung: parts[3].replace('V: ', '').trim(),
-                            timestamp: parts[4].replace('Zeit: ', '').trim()
-                        });
-                    }
-                });
-
-                renderTable();
-            } catch (e) {
-                document.getElementById("stack-content").innerHTML = 
-                    "<p style='color:red;'>Fehler beim Laden der Daten.</p>";
-            }
-        }
-
-        function toggleHistory(groupId) {
-            if (openHistories.has(groupId)) {
-                openHistories.delete(groupId);
-            } else {
-                openHistories.add(groupId);
-            }
-            renderTable();
-        }
-
-        function renderTable() {
-            const searchTerm = document.getElementById("searchInput").value.toLowerCase();
-            
-            // Gruppierung nach Kennzeichen + Nummer
-            const groups = {};
-            rawDataItems.forEach(item => {
-                const key = `${item.kennzeichen}|${item.nummer}`;
-                if (!groups[key]) groups[key] = [];
-                groups[key].push(item);
+        rawDataItems = [];
+        lines.forEach((line) => {
+          const parts = line.split(" | ");
+          if (parts.length >= 5) {
+            rawDataItems.push({
+              id: parts[0].replace("ID: ", "").trim(),
+              kennzeichen: parts[1].replace("K: ", "").trim(),
+              nummer: parts[2].replace("N: ", "").trim(),
+              spannung: parts[3].replace("V: ", "").trim(),
+              timestamp: parts[4].replace("Zeit: ", "").trim(),
             });
+          }
+        });
 
-            const groupKeys = Object.keys(groups);
-            const filteredKeys = groupKeys.filter(key => {
-                const [k, n] = key.split('|');
-                return k.toLowerCase().includes(searchTerm) || n.toLowerCase().includes(searchTerm);
-            });
+        renderTable();
+      } catch (e) {
+        document.getElementById("stack-content").innerHTML =
+          "<p style='color:red;'>Fehler beim Laden der Daten.</p>";
+      }
+    }
 
-            if (filteredKeys.length === 0) {
-                document.getElementById("stack-content").innerHTML = "<p>Keine Einträge gefunden.</p>";
-                return;
-            }
+    function toggleHistory(groupId) {
+      if (openHistories.has(groupId)) {
+        openHistories.delete(groupId);
+      } else {
+        openHistories.add(groupId);
+      }
+      renderTable();
+    }
 
-            let html = `
+    function renderTable() {
+      const searchTerm = document
+        .getElementById("searchInput")
+        .value.toLowerCase();
+
+      // Gruppierung nach Kennzeichen + Nummer
+      const groups = {};
+      rawDataItems.forEach((item) => {
+        const key = `${item.kennzeichen}|${item.nummer}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
+      });
+
+      const groupKeys = Object.keys(groups);
+      const filteredKeys = groupKeys.filter((key) => {
+        const [k, n] = key.split("|");
+        return (
+          k.toLowerCase().includes(searchTerm) ||
+          n.toLowerCase().includes(searchTerm)
+        );
+      });
+
+      if (filteredKeys.length === 0) {
+        document.getElementById("stack-content").innerHTML =
+          "<p>Keine Einträge gefunden.</p>";
+        return;
+      }
+
+      let html = `
                 <table class="stack-table">
                     <thead>
                         <tr>
@@ -249,56 +282,59 @@
                     <tbody>
             `;
 
-            filteredKeys.forEach(key => {
-                const measurements = groups[key];
-                const latest = measurements[0]; // Da SQL DESC sortiert, ist 0 der neuste
-                const groupId = key.replace(/[^a-z0-9]/gi, '_'); // ID für DOM
-                const isOpen = openHistories.has(key);
+      filteredKeys.forEach((key) => {
+        const measurements = groups[key];
+        const latest = measurements[0]; // Da SQL DESC sortiert, ist 0 der neuste
+        const groupId = key.replace(/[^a-z0-9]/gi, "_"); // ID für DOM
+        const isOpen = openHistories.has(key);
 
-                html += `
+        html += `
                     <tr class="main-row" onclick="toggleHistory('${key}')">
-                        <td class="${searchTerm && latest.kennzeichen.toLowerCase().includes(searchTerm) ? 'highlight' : ''}">${latest.kennzeichen}</td>
-                        <td class="${searchTerm && latest.nummer.toLowerCase().includes(searchTerm) ? 'highlight' : ''}">${latest.nummer}</td>
+                        <td class="${searchTerm && latest.kennzeichen.toLowerCase().includes(searchTerm) ? "highlight" : ""}">${latest.kennzeichen}</td>
+                        <td class="${searchTerm && latest.nummer.toLowerCase().includes(searchTerm) ? "highlight" : ""}">${latest.nummer}</td>
                         <td style="color: #005b9c; font-weight: bold;">${latest.spannung} V <span class="badge-newest">NEU</span></td>
                         <td style="font-size: 0.85em;">${latest.timestamp}</td>
-                        <td><button class="history-btn">${isOpen ? 'Schließen' : 'Historie (' + measurements.length + ')'}</button></td>
+                        <td><button class="history-btn">${isOpen ? "Schließen" : "Historie (" + measurements.length + ")"}</button></td>
                     </tr>
-                    <tr id="hist_${groupId}" class="history-row" style="display: ${isOpen ? 'table-row' : 'none'}">
+                    <tr id="hist_${groupId}" class="history-row" style="display: ${isOpen ? "table-row" : "none"}">
                         <td colspan="5">
                             <div class="history-container">
                                 <strong>Mess-Historie für ${latest.kennzeichen} (${latest.nummer}):</strong>
                                 <div class="history-list">
                 `;
 
-                // Zeige alle Messungen außer der neuesten (die steht ja schon oben)
-                measurements.forEach((m, index) => {
-                    html += `
-                        <div class="history-item" style="${index === 0 ? 'background: #e8f5e9;' : ''}">
+        // Zeige alle Messungen außer der neuesten (die steht ja schon oben)
+        measurements.forEach((m, index) => {
+          html += `
+                        <div class="history-item ${index === 0 ? "history-item-latest" : ""}">
                             <span>Messung vom ${m.timestamp}</span>
                             <span><strong>${m.spannung} V</strong></span>
                             <span style="color: #999; font-size: 0.8em;">ID: ${m.id}</span>
                         </div>
                     `;
-                });
+        });
 
-                html += `
+        html += `
                                 </div>
                             </div>
                         </td>
                     </tr>
                 `;
-            });
+      });
 
-            html += `</tbody></table>`;
-            document.getElementById("stack-content").innerHTML = html;
-        }
+      html += `</tbody></table>`;
+      document.getElementById("stack-content").innerHTML = html;
+    }
 
-        document.getElementById("searchInput").addEventListener("input", renderTable);
+    document
+      .getElementById("searchInput")
+      .addEventListener("input", renderTable);
 
-        // Update alle 5 Sekunden (reicht für Historie)
-        setInterval(updateStackData, 5000);
-        updateStackData();
-    </script>
-    <script src="js/main.js"></script>
+    // Update alle 5 Sekunden (reicht für Historie)
+    setInterval(updateStackData, 5000);
+    updateStackData();
+  </script>
+  <script src="js/main.js"></script>
 </body>
+
 </html>
