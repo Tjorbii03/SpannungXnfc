@@ -26,10 +26,10 @@ public class M5Receiver {
             }
         }).start();
 
-        // Arch Linux nutzt meist /dev/rfcomm0 für Bluetooth Serial
+
         String portName = System.getProperty("os.name").toLowerCase().contains("linux") ? "/dev/rfcomm0" : "COM6";
         SerialPort comPort = SerialPort.getCommPort(portName);
-        
+
         if (comPort.openPort()) {
             System.out.println("Bluetooth verbunden auf " + portName + "!");
             lastData = "Verbunden, warte auf Daten...";
@@ -97,14 +97,14 @@ public class M5Receiver {
         try (Statement stmt = mainConn.createStatement();
              ResultSet rs = stmt.executeQuery(
                  "SELECT value, timestamp FROM measurements ORDER BY id DESC LIMIT 5;")) {
-            
+
             while (rs.next()) {
                 sb.append("Value: ").append(rs.getString("value"))
                   .append(" | Timestamp: ").append(rs.getString("timestamp"))
                   .append("\n");
             }
-        } catch (SQLException e) { 
-            return "Fehler beim Abrufen."; 
+        } catch (SQLException e) {
+            return "Fehler beim Abrufen.";
         }
         return sb.toString();
     }
@@ -190,7 +190,7 @@ public class M5Receiver {
 
     private static void saveToStackSQLite(String data) {
         if (stackConn == null) return;
-        
+
         // Erwartet Format: Kennzeichen;Nummer;Spannung
         String[] parts = data.split(";");
         if (parts.length < 3) {
