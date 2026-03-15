@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<!--
+  M5Stack Spannungsmesser - Stack Zuordnung Seite
+  Mit Suchfunktion nach Stack ID
+-->
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Stack Zuordnung - M5Stack Spannungsmesser</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .search-container {
+            margin: 25px 0;
+            text-align: center;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #searchInput {
+            padding: 12px 16px;
+            width: 100%;
+            max-width: 560px;
+            font-size: 16.5px;
+            border: 2px solid #383838;
+            border-radius: 10px;
+            background: white;
+            color: #222;
+            transition: all 0.3s ease;
+        }
+        #searchInput:focus {
+            outline: none;
+            border-color: #005b9c;
+            box-shadow: 0 0 0 3px rgba(0, 91, 156, 0.2);
+        }
+
+        /* Regler (Pfeile) komplett entfernen */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        /* Dark Mode - Suchfeld */
+        .dark-mode #searchInput {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: #4fc3f7;
+            color: white;
+        }
+        .dark-mode #searchInput:focus {
+            border-color: #4fc3f7;
+            box-shadow: 0 0 0 3px rgba(79, 195, 247, 0.25);
+        }
+
+        .result-box {
+            margin: 15px auto;
+            padding: 15px;
+            background: #f8f8f8;
+            border: 2px solid #005b9c;
+            border-radius: 8px;
+            max-width: 560px;
+            min-height: 65px;
+            font-size: 17px;
+            display: none;
+        }
+        .dark-mode .result-box {
+            background: rgba(0, 0, 0, 0.35);
+            border-color: #4fc3f7;
+            color: white;
+        }
+
+        .stack-table {
+            margin-top: 30px;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            border-collapse: collapse;
+        }
+        .stack-table th, .stack-table td {
+            padding: 12px;
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+        .stack-table th {
+            background: #005b9c;
+            color: white;
+        }
+        .dark-mode .stack-table th {
+            background: transparent;
+        }
+        .stack-table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        .dark-mode .stack-table tr:nth-child(even) {
+            background: rgba(255,255,255,0.03);
+        }
+    </style>
+</head>
+<body>
+    <a href="#main" class="skip-link">Zum Inhalt springen</a>
+
+    <header>
+        <div class="header-content">
+            <div class="menubalken" id="menubalken" aria-hidden="true"></div>
+            <button id="menuButton" class="menu-button"
+                    aria-label="Navigation öffnen (Shortcut: M)"
+                    aria-expanded="false"
+                    aria-controls="mainNav"
+                    aria-describedby="menuHint"
+                    data-tooltip="Menü öffnen (Shortcut: M)">
+                <svg viewBox="0 0 100 80" aria-hidden="true">
+                    <rect width="100" height="10" rx="5"></rect>
+                    <rect y="30" width="100" height="10" rx="5"></rect>
+                    <rect y="60" width="100" height="10" rx="5"></rect>
+                </svg>
+            </button>
+            <nav id="mainNav" aria-hidden="true">
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="veraltete-daten.html">Veraltete Daten</a></li>
+                    <li><a href="stack-zuordnung.html">Stack Zuordnung</a></li>
+                    <li>
+                        <input type="checkbox" id="darkmode-toggle" class="darkmode-checkbox" />
+                        <label for="darkmode-toggle" class="darkmode-toggle"></label>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main" tabindex="-1">
+        <div class="box">
+            <h2>Stack Zuordnung</h2>
+
+            <!-- Suchfeld -->
+            <div class="search-container">
+                <input type="letter" id="searchInput" 
+                       placeholder="Gewünschte Stack Name eingeben:"
+                       min="1">
+            </div>
+
+            <!-- Ergebnis-Feld -->
+            <div id="resultBox" class="result-box"></div>
+
+            <!-- Komplette Stack-Tabelle -->
+            <div id="stack-content">
+                <p>Lade Stack-Daten...</p>
+            </div>
+        </div>
+    </main>
+
+    <span id="menuHint" hidden>Shortcut: Taste M</span>
+    <div aria-live="polite" class="sr-only" id="menuStatus" hidden></div>
+
+    <script>
+        let allStackData = [];
+
+        function searchStackId() {
+            const input = document.getElementById("searchInput").value.trim();
+            const resultBox = document.getElementById("resultBox");
+
+            if (!input) {
+                resultBox.style.display = "none";
+                return;
+            }
+
+            const found = allStackData.find(item => item.stack_id === parseInt(input));
+
+            if (found) {
+                resultBox.innerHTML = `
+                    <strong>Stack ID:</strong> ${found.stack_id}<br>
+                    <strong>Value:</strong> ${found.value}<br>
+                    <strong>Timestamp:</strong> ${found.timestamp}
+                `;
+                resultBox.style.display = "block";
+            } else {
+                resultBox.innerHTML = `<span style="color:red;">Keine Stack ID mit der Nummer ${input} gefunden.</span>`;
+                resultBox.style.display = "block";
+            }
+        }
+
+        async function updateStackData() {
+            try {
+                const response = await fetch("/stack_data");
+                const text = await response.text();
+                const lines = text.trim().split('\n').filter(line => line.trim() !== '');
+
+                allStackData = [];
+
+                let html = `
+                    <table class="stack-table">
+                        <thead>
+                            <tr>
+                                <th>Stack Name</th>
+                                <th>Value</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                lines.forEach(line => {
+                    const parts = line.split(' | ');
+                    if (parts.length === 3) {
+                        const stackId = parseInt(parts[0].replace('Stack ID: ', '').trim());
+                        const value = parts[1].replace('Value: ', '').trim();
+                        const timestamp = parts[2].replace('Timestamp: ', '').trim();
+
+                        allStackData.push({ stack_id: stackId, value: value, timestamp: timestamp });
+
+                        html += `
+                            <tr>
+                                <td><strong>${stackId}</strong></td>
+                                <td>${value}</td>
+                                <td>${timestamp}</td>
+                            </tr>
+                        `;
+                    }
+                });
+
+                html += `</tbody></table>`;
+                document.getElementById("stack-content").innerHTML = html;
+
+            } catch (e) {
+                document.getElementById("stack-content").innerHTML = 
+                    "<p style='color:red;'>Fehler beim Laden der Stack-Daten</p>";
+            }
+        }
+
+        document.getElementById("searchInput").addEventListener("input", searchStackId);
+
+        setInterval(updateStackData, 3000);
+        updateStackData();
+    </script>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

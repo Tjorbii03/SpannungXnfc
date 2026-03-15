@@ -1,0 +1,278 @@
+import com.fazecast.jSerialComm.SerialPort;
+import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpExchange;
+import java.io.*;
+import java.net.InetSocketAddress;
+import java.nio.file.Files;
+import java.sql.*;
+
+public class M5Receiver {
+    public static String lastData = "Warte auf Verbindung...";
+
+    private static Connection mainConn = null;
+    private static Connection veraltetConn = null;
+    private static Connection stackConn = null;
+
+    public static void main(String[] args) {
+        initSQLite();
+        initVeraltetSQLite();
+        initStackSQLite();
+
+        new Thread(() -> {
+            try { startWebserver(); }
+            catch (IOException e) {
+                System.err.println("Webserver konnte nicht starten: " + e.getMessage());
+                System.err.println("→ Five Server in VS Code stoppen!");
+            }
+        }).start();
+
+        SerialPort comPort = SerialPort.getCommPort("COM6");
+        if (comPort.openPort()) {
+            System.out.println("Bluetooth verbunden auf COM6!");
+            lastData = "Verbunden, warte auf Daten...";
+        } else {
+            System.out.println("COM6 nicht erreichbar – Webseite läuft trotzdem.");
+            lastData = "Bluetooth-Fehler: COM6 nicht gefunden.";
+        }
+
+        try {
+            while (true) {
+                if (comPort.isOpen() && comPort.bytesAvailable() > 0) {
+                    byte[] readBuffer = new byte[comPort.bytesAvailable()];
+                    int numRead = comPort.readBytes(readBuffer, readBuffer.length);
+                    String received = new String(readBuffer, 0, numRead).trim();
+                    if (!received.isEmpty()) {
+                        lastData = received;
+                        System.out.println("Empfangen: " + lastData);
+                        saveToSQLite(received);
+                        saveToStackSQLite(received);
+                    }
+                }
+                Thread.sleep(100);
+            }
+        } catch (Exception e) {
+            System.err.println("Fehler in der Bluetooth-Schleife: " + e.getMessage());
+        } finally {
+            closeConnections();
+        }
+    }
+
+    // ====================== MAIN DB ======================
+    private static void initSQLite() {
+        try {
+            Class.forName("org.sqlite.JDBC");
+            mainConn = DriverManager.getConnection("jdbc:sqlite:m5_data.db");
+            System.out.println("SQLite DB verbunden: m5_data.db");
+
+            String sql = "CREATE TABLE IF NOT EXISTS measurements (" +
+                         "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                         "value TEXT NOT NULL," +
+                         "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)";
+            try (Statement stmt = mainConn.createStatement()) { stmt.execute(sql); }
+        } catch (Exception e) {
+            System.err.println("Main DB Init Fehler: " + e.getMessage());
+        }
+    }
+
+    private static void saveToSQLite(String data) {
+        if (mainConn == null) return;
+        String sql = "INSERT INTO measurements (value) VALUES (?)";
+        try (PreparedStatement pstmt = mainConn.prepareStatement(sql)) {
+            pstmt.setString(1, data);
+            pstmt.executeUpdate();
+            updateVeraltetDB();
+        } catch (SQLException e) {
+            System.err.println("Main DB Speicher-Fehler: " + e.getMessage());
+        }
+    }
+
+    // NEU: Gibt nur die neuesten 5 Werte zurück (für index.html)
+    public static String getAllMeasurements() {
+        if (mainConn == null) return "Main DB nicht verbunden.";
+        StringBuilder sb = new StringBuilder();
+        try (Statement stmt = mainConn.createStatement();
+             ResultSet rs = stmt.executeQuery(
+                 "SELECT value, timestamp FROM measurements ORDER BY id DESC LIMIT 5;")) {
+            
+            while (rs.next()) {
+                sb.append("Value: ").append(rs.getString("value"))
+                  .append(" | Timestamp: ").append(rs.getString("timestamp"))
+                  .append("\n");
+            }
+        } catch (SQLException e) { 
+            return "Fehler beim Abrufen."; 
+        }
+        return sb.toString();
+    }
+
+    // ====================== VERALTETE DB ======================
+    private static void initVeraltetSQLite() {
+        try {
+            veraltetConn = DriverManager.getConnection("jdbc:sqlite:m5_data_veraltet.db");
+            System.out.println("SQLite DB verbunden: m5_data_veraltet.db");
+
+            String sql = "CREATE TABLE IF NOT EXISTS measurements (" +
+                         "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                         "value TEXT NOT NULL," +
+                         "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)";
+            try (Statement stmt = veraltetConn.createStatement()) { stmt.execute(sql); }
+        } catch (SQLException e) {
+            System.err.println("Veraltete DB Init Fehler: " + e.getMessage());
+        }
+    }
+
+    private static void updateVeraltetDB() {
+        if (mainConn == null) return;
+        String veraltetDbUrl = "jdbc:sqlite:m5_data_veraltet.db";
+        try (Connection conn = DriverManager.getConnection(veraltetDbUrl)) {
+            String selectSQL = "SELECT value FROM measurements ORDER BY id ASC LIMIT 1 OFFSET 5;";
+            try (Statement stmt = mainConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(selectSQL)) {
+                if (rs.next()) {
+                    String value = rs.getString("value");
+                    String checkSQL = "SELECT COUNT(*) AS count FROM measurements WHERE value = ?";
+                    try (PreparedStatement checkStmt = conn.prepareStatement(checkSQL)) {
+                        checkStmt.setString(1, value);
+                        if (checkStmt.executeQuery().getInt("count") == 0) {
+                            String insertSQL = "INSERT INTO measurements (value) VALUES (?)";
+                            try (PreparedStatement insertStmt = conn.prepareStatement(insertSQL)) {
+                                insertStmt.setString(1, value);
+                                insertStmt.executeUpdate();
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Veraltete DB Update Fehler: " + e.getMessage());
+        }
+    }
+
+    public static String getAllVeraltetMeasurements() {
+        String veraltetDbUrl = "jdbc:sqlite:m5_data_veraltet.db";
+        StringBuilder sb = new StringBuilder();
+        try (Connection c = DriverManager.getConnection(veraltetDbUrl);
+             Statement s = c.createStatement();
+             ResultSet rs = s.executeQuery("SELECT value, timestamp FROM measurements ORDER BY id DESC;")) {
+            while (rs.next()) {
+                sb.append("Value: ").append(rs.getString("value"))
+                  .append(" | Timestamp: ").append(rs.getString("timestamp"))
+                  .append("\n");
+            }
+        } catch (SQLException e) {
+            return "Fehler beim Abrufen veralteter Daten.";
+        }
+        return sb.toString();
+    }
+
+    // ====================== STACK DB ======================
+    private static void initStackSQLite() {
+        try {
+            stackConn = DriverManager.getConnection("jdbc:sqlite:m5_data_stack.db");
+            System.out.println("✅ Stack DB erfolgreich erstellt/verbunden: m5_data_stack.db");
+
+            String sql = "CREATE TABLE IF NOT EXISTS stack (" +
+                         "stack_id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                         "value TEXT NOT NULL," +
+                         "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)";
+            try (Statement stmt = stackConn.createStatement()) { stmt.execute(sql); }
+        } catch (Exception e) {
+            System.err.println("Stack DB Init Fehler: " + e.getMessage());
+        }
+    }
+
+    private static void saveToStackSQLite(String data) {
+        if (stackConn == null) return;
+        String sql = "INSERT INTO stack (value) VALUES (?)";
+        try (PreparedStatement pstmt = stackConn.prepareStatement(sql)) {
+            pstmt.setString(1, data);
+            pstmt.executeUpdate();
+            System.out.println("In Stack-DB gespeichert (stack_id +1): " + data);
+        } catch (SQLException e) {
+            System.err.println("Stack DB Speicher-Fehler: " + e.getMessage());
+        }
+    }
+
+    public static String getAllStackMeasurements() {
+        if (stackConn == null) return "Stack DB nicht verbunden.";
+        StringBuilder sb = new StringBuilder();
+        try (Statement stmt = stackConn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT stack_id, value, timestamp FROM stack ORDER BY stack_id DESC;")) {
+            while (rs.next()) {
+                sb.append("Stack ID: ").append(rs.getInt("stack_id"))
+                  .append(" | Value: ").append(rs.getString("value"))
+                  .append(" | Timestamp: ").append(rs.getString("timestamp"))
+                  .append("\n");
+            }
+        } catch (SQLException e) {
+            return "Fehler beim Abrufen der Stack-Daten.";
+        }
+        return sb.toString();
+    }
+
+    private static void closeConnections() {
+        try {
+            if (mainConn != null) mainConn.close();
+            if (veraltetConn != null) veraltetConn.close();
+            if (stackConn != null) stackConn.close();
+        } catch (SQLException ignored) {}
+    }
+
+    // ====================== WEBSERVER ======================
+    private static void startWebserver() throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+
+        server.createContext("/", exchange -> {
+            String path = exchange.getRequestURI().getPath();
+            if (path == null || path.equals("") || path.equals("/")) path = "/index.html";
+
+            String filePath;
+            String contentType = "text/plain; charset=UTF-8";
+
+            if (path.endsWith(".html")) {
+                filePath = "web" + path;
+                contentType = "text/html; charset=UTF-8";
+            } else if (path.startsWith("/css/")) {
+                filePath = "web" + path;
+                contentType = "text/css; charset=UTF-8";
+            } else if (path.startsWith("/js/")) {
+                filePath = "web" + path;
+                contentType = "application/javascript; charset=UTF-8";
+            } else {
+                filePath = "pages" + path;
+            }
+
+            serveFile(exchange, filePath, contentType);
+        });
+
+        server.createContext("/data", ex -> sendText(ex, lastData));
+        server.createContext("/veraltete_data", ex -> sendText(ex, getAllVeraltetMeasurements()));
+        server.createContext("/all_data", ex -> sendText(ex, getAllMeasurements()));   // Wichtig für index.html
+        server.createContext("/stack_data", ex -> sendText(ex, getAllStackMeasurements()));
+
+        server.start();
+        System.out.println("✅ Webserver läuft auf http://localhost:8080");
+    }
+
+    private static void sendText(HttpExchange ex, String text) throws IOException {
+        byte[] bytes = text.getBytes("UTF-8");
+        ex.getResponseHeaders().set("Content-Type", "text/plain; charset=UTF-8");
+        ex.sendResponseHeaders(200, bytes.length);
+        try (OutputStream os = ex.getResponseBody()) { os.write(bytes); }
+    }
+
+    private static void serveFile(HttpExchange exchange, String path, String contentType) throws IOException {
+        File file = new File(path);
+        if (file.exists() && file.isFile()) {
+            byte[] bytes = Files.readAllBytes(file.toPath());
+            exchange.getResponseHeaders().set("Content-Type", contentType);
+            exchange.sendResponseHeaders(200, bytes.length);
+            try (OutputStream os = exchange.getResponseBody()) { os.write(bytes); }
+        } else {
+            String error = "Datei nicht gefunden: " + path;
+            exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=UTF-8");
+            exchange.sendResponseHeaders(404, error.length());
+            try (OutputStream os = exchange.getResponseBody()) { os.write(error.getBytes("UTF-8")); }
+        }
+    }
+}
