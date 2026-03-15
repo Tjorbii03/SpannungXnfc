@@ -1,3 +1,4 @@
+
 // M5Receiver.java
 // Programm: empfängt serielle Daten (z. B. Bluetooth über COM-Port), speichert Messwerte
 // in drei SQLite-Datenbanken und stellt einfache HTTP-Endpunkte bereit.
@@ -32,16 +33,19 @@ public class M5Receiver {
         initVeraltetSQLite();
         initStackSQLite();
 
-        // Webserver in separatem Thread starten, damit die serielle Schleife nicht blockiert wird
+        // Webserver in separatem Thread starten, damit die serielle Schleife nicht
+        // blockiert wird
         new Thread(() -> {
-            try { startWebserver(); }
-            catch (IOException e) {
+            try {
+                startWebserver();
+            } catch (IOException e) {
                 System.err.println("Webserver konnte nicht starten: " + e.getMessage());
                 System.err.println("→ Port 8080 belegt? Falls ja, Prozess beenden!");
             }
         }).start();
 
-        // Serieller Port: automatische Erkennung je nach Betriebssystem (Linux: rfcomm0, sonst COM6)
+        // Serieller Port: automatische Erkennung je nach Betriebssystem (Linux:
+        // rfcomm0, sonst COM6)
         String portName = System.getProperty("os.name").toLowerCase().contains("linux") ? "/dev/rfcomm0" : "COM6";
         SerialPort comPort = SerialPort.getCommPort(portName);
 
@@ -86,12 +90,15 @@ public class M5Receiver {
             Class.forName("org.sqlite.JDBC");
             mainConn = DriverManager.getConnection("jdbc:sqlite:m5_data.db");
             System.out.println("SQLite DB verbunden: m5_data.db");
-            // Table-Definition: id (autoincrement), value (TEXT), timestamp (aktueller Zeitstempel)
+            // Table-Definition: id (autoincrement), value (TEXT), timestamp (aktueller
+            // Zeitstempel)
             String sql = "CREATE TABLE IF NOT EXISTS measurements (" +
-                         "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                         "value TEXT NOT NULL," +
-                         "timestamp DATETIME DEFAULT (datetime('now', 'localtime')))";
-            try (Statement stmt = mainConn.createStatement()) { stmt.execute(sql); }
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "value TEXT NOT NULL," +
+                    "timestamp DATETIME DEFAULT (datetime('now', 'localtime')))";
+            try (Statement stmt = mainConn.createStatement()) {
+                stmt.execute(sql);
+            }
         } catch (Exception e) {
             // Fehler hier können z. B. auf fehlenden JDBC-Treiber hinweisen
             System.err.println("Main DB Init Fehler: " + e.getMessage());
@@ -99,7 +106,8 @@ public class M5Receiver {
     }
 
     private static void saveToSQLite(String data) {
-        if (mainConn == null) return;
+        if (mainConn == null)
+            return;
         String sql = "INSERT INTO measurements (value) VALUES (?)";
         try (PreparedStatement pstmt = mainConn.prepareStatement(sql)) {
             pstmt.setString(1, data);
@@ -113,15 +121,16 @@ public class M5Receiver {
 
     // NEU: Gibt nur die neuesten 5 Werte zurück (für index.html)
     public static String getAllMeasurements() {
-        if (mainConn == null) return "Main DB nicht verbunden.";
+        if (mainConn == null)
+            return "Main DB nicht verbunden.";
         StringBuilder sb = new StringBuilder();
         try (Statement stmt = mainConn.createStatement();
-             ResultSet rs = stmt.executeQuery(
-                 "SELECT value, timestamp FROM measurements ORDER BY id DESC LIMIT 5;")) {
+                ResultSet rs = stmt.executeQuery(
+                        "SELECT value, timestamp FROM measurements ORDER BY id DESC LIMIT 5;")) {
             while (rs.next()) {
                 sb.append("Value: ").append(rs.getString("value"))
-                  .append(" | Timestamp: ").append(rs.getString("timestamp"))
-                  .append("\n");
+                        .append(" | Timestamp: ").append(rs.getString("timestamp"))
+                        .append("\n");
             }
         } catch (SQLException e) {
             return "Fehler beim Abrufen.";
@@ -135,10 +144,12 @@ public class M5Receiver {
             veraltetConn = DriverManager.getConnection("jdbc:sqlite:m5_data_veraltet.db");
             System.out.println("SQLite DB verbunden: m5_data_veraltet.db");
             String sql = "CREATE TABLE IF NOT EXISTS measurements (" +
-                         "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                         "value TEXT NOT NULL," +
-                         "timestamp DATETIME DEFAULT (datetime('now', 'localtime')))";
-            try (Statement stmt = veraltetConn.createStatement()) { stmt.execute(sql); }
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "value TEXT NOT NULL," +
+                    "timestamp DATETIME DEFAULT (datetime('now', 'localtime')))";
+            try (Statement stmt = veraltetConn.createStatement()) {
+                stmt.execute(sql);
+            }
         } catch (SQLException e) {
             System.err.println("Veraltete DB Init Fehler: " + e.getMessage());
         }
@@ -146,18 +157,21 @@ public class M5Receiver {
 
     /**
      * Versucht, den (6.) älteren Eintrag aus der Haupt-DB zu lesen (OFFSET 5).
-     * Falls dieser Wert noch nicht in der veralteten DB vorhanden ist, wird er dort eingefügt.
-     * Hinweis: Die Methode öffnet eine neue Connection auf die veraltete DB, verwendet aber
+     * Falls dieser Wert noch nicht in der veralteten DB vorhanden ist, wird er dort
+     * eingefügt.
+     * Hinweis: Die Methode öffnet eine neue Connection auf die veraltete DB,
+     * verwendet aber
      * die mainConn zum Lesen aus der Haupt-DB.
      */
     private static void updateVeraltetDB() {
-        if (mainConn == null) return;
+        if (mainConn == null)
+            return;
         String veraltetDbUrl = "jdbc:sqlite:m5_data_veraltet.db";
         try (Connection conn = DriverManager.getConnection(veraltetDbUrl)) {
             // Liest den älteren Eintrag aus der Haupt-DB (Offset 5)
             String selectSQL = "SELECT value FROM measurements ORDER BY id ASC LIMIT 1 OFFSET 5;";
             try (Statement stmt = mainConn.createStatement();
-                 ResultSet rs = stmt.executeQuery(selectSQL)) {
+                    ResultSet rs = stmt.executeQuery(selectSQL)) {
                 if (rs.next()) {
                     String value = rs.getString("value");
                     // Prüfen, ob der Wert bereits in der veralteten DB existiert
@@ -184,12 +198,12 @@ public class M5Receiver {
         String veraltetDbUrl = "jdbc:sqlite:m5_data_veraltet.db";
         StringBuilder sb = new StringBuilder();
         try (Connection c = DriverManager.getConnection(veraltetDbUrl);
-             Statement s = c.createStatement();
-             ResultSet rs = s.executeQuery("SELECT value, timestamp FROM measurements ORDER BY id DESC;")) {
+                Statement s = c.createStatement();
+                ResultSet rs = s.executeQuery("SELECT value, timestamp FROM measurements ORDER BY id DESC;")) {
             while (rs.next()) {
                 sb.append("Value: ").append(rs.getString("value"))
-                  .append(" | Timestamp: ").append(rs.getString("timestamp"))
-                  .append("\n");
+                        .append(" | Timestamp: ").append(rs.getString("timestamp"))
+                        .append("\n");
             }
         } catch (SQLException e) {
             return "Fehler beim Abrufen veralteter Daten.";
@@ -204,19 +218,22 @@ public class M5Receiver {
             System.out.println("✅ Stack DB verbunden: m5_data_stack.db");
             // Wir erweitern die Tabelle um Kennzeichen, Nummer und Spannung
             String sql = "CREATE TABLE IF NOT EXISTS stack (" +
-                         "stack_id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                         "kennzeichen TEXT," +
-                         "nummer TEXT," +
-                         "spannung TEXT," +
-                         "timestamp DATETIME DEFAULT (datetime('now', 'localtime')))";
-            try (Statement stmt = stackConn.createStatement()) { stmt.execute(sql); }
+                    "stack_id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "kennzeichen TEXT," +
+                    "nummer TEXT," +
+                    "spannung TEXT," +
+                    "timestamp DATETIME DEFAULT (datetime('now', 'localtime')))";
+            try (Statement stmt = stackConn.createStatement()) {
+                stmt.execute(sql);
+            }
         } catch (Exception e) {
             System.err.println("Stack DB Init Fehler: " + e.getMessage());
         }
     }
 
     private static void saveToStackSQLite(String data) {
-        if (stackConn == null) return;
+        if (stackConn == null)
+            return;
         // Erwartet Format: Kennzeichen;Nummer;Spannung
         String[] parts = data.split(";");
         if (parts.length < 3) {
@@ -236,17 +253,18 @@ public class M5Receiver {
     }
 
     public static String getAllStackMeasurements() {
-        if (stackConn == null) return "Stack DB nicht verbunden.";
+        if (stackConn == null)
+            return "Stack DB nicht verbunden.";
         StringBuilder sb = new StringBuilder();
         try (Statement stmt = stackConn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT * FROM stack ORDER BY stack_id DESC;")) {
+                ResultSet rs = stmt.executeQuery("SELECT * FROM stack ORDER BY stack_id DESC;")) {
             while (rs.next()) {
                 sb.append("ID: ").append(rs.getInt("stack_id"))
-                  .append(" | K: ").append(rs.getString("kennzeichen"))
-                  .append(" | N: ").append(rs.getString("nummer"))
-                  .append(" | V: ").append(rs.getString("spannung"))
-                  .append(" | Zeit: ").append(rs.getString("timestamp"))
-                  .append("\n");
+                        .append(" | K: ").append(rs.getString("kennzeichen"))
+                        .append(" | N: ").append(rs.getString("nummer"))
+                        .append(" | V: ").append(rs.getString("spannung"))
+                        .append(" | Zeit: ").append(rs.getString("timestamp"))
+                        .append("\n");
             }
         } catch (SQLException e) {
             return "Fehler beim Abrufen der Stack-Daten.";
@@ -256,10 +274,14 @@ public class M5Receiver {
 
     private static void closeConnections() {
         try {
-            if (mainConn != null) mainConn.close();
-            if (veraltetConn != null) veraltetConn.close();
-            if (stackConn != null) stackConn.close();
-        } catch (SQLException ignored) {}
+            if (mainConn != null)
+                mainConn.close();
+            if (veraltetConn != null)
+                veraltetConn.close();
+            if (stackConn != null)
+                stackConn.close();
+        } catch (SQLException ignored) {
+        }
     }
 
     // ====================== WEBSERVER ======================
@@ -268,7 +290,8 @@ public class M5Receiver {
         // Statische Dateien (HTML/CSS/JS) werden aus "web" bzw. "pages" geliefert.
         server.createContext("/", exchange -> {
             String path = exchange.getRequestURI().getPath();
-            if (path == null || path.equals("") || path.equals("/")) path = "/index.html";
+            if (path == null || path.equals("") || path.equals("/"))
+                path = "/index.html";
             String filePath;
             String contentType = "text/plain; charset=UTF-8";
             if (path.endsWith(".html")) {
@@ -288,7 +311,7 @@ public class M5Receiver {
         // HTTP-Endpunkte für die Frontend-Abfragen
         server.createContext("/data", ex -> sendText(ex, lastData));
         server.createContext("/veraltete_data", ex -> sendText(ex, getAllVeraltetMeasurements()));
-        server.createContext("/all_data", ex -> sendText(ex, getAllMeasurements()));   // Wichtig für index.html
+        server.createContext("/all_data", ex -> sendText(ex, getAllMeasurements())); // Wichtig für index.html
         server.createContext("/stack_data", ex -> sendText(ex, getAllStackMeasurements()));
         server.start();
         System.out.println("✅ Webserver läuft auf http://localhost:8080");
@@ -299,22 +322,29 @@ public class M5Receiver {
         byte[] bytes = text.getBytes("UTF-8");
         ex.getResponseHeaders().set("Content-Type", "text/plain; charset=UTF-8");
         ex.sendResponseHeaders(200, bytes.length);
-        try (OutputStream os = ex.getResponseBody()) { os.write(bytes); }
+        try (OutputStream os = ex.getResponseBody()) {
+            os.write(bytes);
+        }
     }
 
-    // Liest Datei vom Dateisystem und sendet sie; wenn Datei fehlt, 404 mit Fehlermeldung
+    // Liest Datei vom Dateisystem und sendet sie; wenn Datei fehlt, 404 mit
+    // Fehlermeldung
     private static void serveFile(HttpExchange exchange, String path, String contentType) throws IOException {
         File file = new File(path);
         if (file.exists() && file.isFile()) {
             byte[] bytes = Files.readAllBytes(file.toPath());
             exchange.getResponseHeaders().set("Content-Type", contentType);
             exchange.sendResponseHeaders(200, bytes.length);
-            try (OutputStream os = exchange.getResponseBody()) { os.write(bytes); }
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(bytes);
+            }
         } else {
             String error = "Datei nicht gefunden: " + path;
             exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=UTF-8");
             exchange.sendResponseHeaders(404, error.length());
-            try (OutputStream os = exchange.getResponseBody()) { os.write(error.getBytes("UTF-8")); }
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(error.getBytes("UTF-8"));
+            }
         }
     }
 }
