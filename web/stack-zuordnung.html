@@ -1,8 +1,4 @@
 <!DOCTYPE html>
-<!--
-  M5Stack Spannungsmesser - Stack Zuordnung Seite
-  Mit Suchfunktion nach Stack ID
--->
 <html lang="de">
 <head>
     <meta charset="UTF-8">
@@ -36,40 +32,8 @@
             box-shadow: 0 0 0 3px rgba(0, 91, 156, 0.2);
         }
 
-        /* Regler (Pfeile) komplett entfernen */
-        input[type="number"]::-webkit-outer-spin-button,
-        input[type="number"]::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        input[type="number"] {
-            -moz-appearance: textfield;
-        }
-
-        /* Dark Mode - Suchfeld */
         .dark-mode #searchInput {
             background: rgba(255, 255, 255, 0.07);
-            border-color: #4fc3f7;
-            color: white;
-        }
-        .dark-mode #searchInput:focus {
-            border-color: #4fc3f7;
-            box-shadow: 0 0 0 3px rgba(79, 195, 247, 0.25);
-        }
-
-        .result-box {
-            margin: 15px auto;
-            padding: 15px;
-            background: #f8f8f8;
-            border: 2px solid #005b9c;
-            border-radius: 8px;
-            max-width: 560px;
-            min-height: 65px;
-            font-size: 17px;
-            display: none;
-        }
-        .dark-mode .result-box {
-            background: rgba(0, 0, 0, 0.35);
             border-color: #4fc3f7;
             color: white;
         }
@@ -77,28 +41,83 @@
         .stack-table {
             margin-top: 30px;
             width: 100%;
-            max-width: 800px;
+            max-width: 950px;
             margin-left: auto;
             margin-right: auto;
             border-collapse: collapse;
         }
         .stack-table th, .stack-table td {
-            padding: 12px;
+            padding: 14px;
             border: 1px solid #ccc;
             text-align: center;
         }
         .stack-table th {
             background: #005b9c;
             color: white;
+            font-weight: 600;
         }
         .dark-mode .stack-table th {
-            background: transparent;
+            background: #1a1a1a;
+            border-color: #444;
         }
-        .stack-table tr:nth-child(even) {
-            background: #f9f9f9;
+        .stack-table tr.main-row:hover {
+            background-color: rgba(0, 91, 156, 0.05);
+            cursor: pointer;
         }
-        .dark-mode .stack-table tr:nth-child(even) {
-            background: rgba(255,255,255,0.03);
+        .dark-mode .stack-table tr.main-row:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Historie-Bereich */
+        .history-row {
+            display: none;
+            background-color: #f0f4f7;
+        }
+        .dark-mode .history-row {
+            background-color: #121212;
+        }
+        .history-container {
+            padding: 15px;
+            text-align: left;
+        }
+        .history-list {
+            width: 100%;
+            font-size: 0.9em;
+            border-top: 1px solid #ddd;
+            margin-top: 10px;
+        }
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .dark-mode .history-item {
+            border-color: #333;
+        }
+
+        .badge-newest {
+            background: #27ae60;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+        .history-btn {
+            background: #005b9c;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+        .history-btn:hover { background: #004577; }
+
+        .highlight {
+            background-color: rgba(255, 255, 0, 0.2);
+            font-weight: bold;
         }
     </style>
 </head>
@@ -136,19 +155,15 @@
 
     <main id="main" tabindex="-1">
         <div class="box">
-            <h2>Stack Zuordnung</h2>
+            <h2>Gegenstände & Historie</h2>
+            <p style="text-align: center; color: #666;">Zeigt den aktuellsten Status an. Klicken für Historie.</p>
 
-            <!-- Suchfeld -->
             <div class="search-container">
-                <input type="letter" id="searchInput" 
-                       placeholder="Gewünschte Stack Name eingeben:"
-                       min="1">
+                <input type="text" id="searchInput" 
+                       placeholder="Nach Kennzeichen oder Nummer suchen..."
+                       autocomplete="off">
             </div>
 
-            <!-- Ergebnis-Feld -->
-            <div id="resultBox" class="result-box"></div>
-
-            <!-- Komplette Stack-Tabelle -->
             <div id="stack-content">
                 <p>Lade Stack-Daten...</p>
             </div>
@@ -159,31 +174,8 @@
     <div aria-live="polite" class="sr-only" id="menuStatus" hidden></div>
 
     <script>
-        let allStackData = [];
-
-        function searchStackId() {
-            const input = document.getElementById("searchInput").value.trim();
-            const resultBox = document.getElementById("resultBox");
-
-            if (!input) {
-                resultBox.style.display = "none";
-                return;
-            }
-
-            const found = allStackData.find(item => item.stack_id === parseInt(input));
-
-            if (found) {
-                resultBox.innerHTML = `
-                    <strong>Stack ID:</strong> ${found.stack_id}<br>
-                    <strong>Value:</strong> ${found.value}<br>
-                    <strong>Timestamp:</strong> ${found.timestamp}
-                `;
-                resultBox.style.display = "block";
-            } else {
-                resultBox.innerHTML = `<span style="color:red;">Keine Stack ID mit der Nummer ${input} gefunden.</span>`;
-                resultBox.style.display = "block";
-            }
-        }
+        let rawDataItems = [];
+        let openHistories = new Set(); // Speichert, welche IDs ausgeklappt sind
 
         async function updateStackData() {
             try {
@@ -191,54 +183,122 @@
                 const text = await response.text();
                 const lines = text.trim().split('\n').filter(line => line.trim() !== '');
 
-                allStackData = [];
-
-                let html = `
-                    <table class="stack-table">
-                        <thead>
-                            <tr>
-                                <th>Stack Name</th>
-                                <th>Value</th>
-                                <th>Timestamp</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-
+                rawDataItems = [];
                 lines.forEach(line => {
                     const parts = line.split(' | ');
-                    if (parts.length === 3) {
-                        const stackId = parseInt(parts[0].replace('Stack ID: ', '').trim());
-                        const value = parts[1].replace('Value: ', '').trim();
-                        const timestamp = parts[2].replace('Timestamp: ', '').trim();
-
-                        allStackData.push({ stack_id: stackId, value: value, timestamp: timestamp });
-
-                        html += `
-                            <tr>
-                                <td><strong>${stackId}</strong></td>
-                                <td>${value}</td>
-                                <td>${timestamp}</td>
-                            </tr>
-                        `;
+                    if (parts.length >= 5) {
+                        rawDataItems.push({
+                            id: parts[0].replace('ID: ', '').trim(),
+                            kennzeichen: parts[1].replace('K: ', '').trim(),
+                            nummer: parts[2].replace('N: ', '').trim(),
+                            spannung: parts[3].replace('V: ', '').trim(),
+                            timestamp: parts[4].replace('Zeit: ', '').trim()
+                        });
                     }
                 });
 
-                html += `</tbody></table>`;
-                document.getElementById("stack-content").innerHTML = html;
-
+                renderTable();
             } catch (e) {
                 document.getElementById("stack-content").innerHTML = 
-                    "<p style='color:red;'>Fehler beim Laden der Stack-Daten</p>";
+                    "<p style='color:red;'>Fehler beim Laden der Daten.</p>";
             }
         }
 
-        document.getElementById("searchInput").addEventListener("input", searchStackId);
+        function toggleHistory(groupId) {
+            if (openHistories.has(groupId)) {
+                openHistories.delete(groupId);
+            } else {
+                openHistories.add(groupId);
+            }
+            renderTable();
+        }
 
-        setInterval(updateStackData, 3000);
+        function renderTable() {
+            const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+            
+            // Gruppierung nach Kennzeichen + Nummer
+            const groups = {};
+            rawDataItems.forEach(item => {
+                const key = `${item.kennzeichen}|${item.nummer}`;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(item);
+            });
+
+            const groupKeys = Object.keys(groups);
+            const filteredKeys = groupKeys.filter(key => {
+                const [k, n] = key.split('|');
+                return k.toLowerCase().includes(searchTerm) || n.toLowerCase().includes(searchTerm);
+            });
+
+            if (filteredKeys.length === 0) {
+                document.getElementById("stack-content").innerHTML = "<p>Keine Einträge gefunden.</p>";
+                return;
+            }
+
+            let html = `
+                <table class="stack-table">
+                    <thead>
+                        <tr>
+                            <th>Kennzeichen</th>
+                            <th>Nummer</th>
+                            <th>Aktuelle Spannung</th>
+                            <th>Letzte Messung</th>
+                            <th>Aktion</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            filteredKeys.forEach(key => {
+                const measurements = groups[key];
+                const latest = measurements[0]; // Da SQL DESC sortiert, ist 0 der neuste
+                const groupId = key.replace(/[^a-z0-9]/gi, '_'); // ID für DOM
+                const isOpen = openHistories.has(key);
+
+                html += `
+                    <tr class="main-row" onclick="toggleHistory('${key}')">
+                        <td class="${searchTerm && latest.kennzeichen.toLowerCase().includes(searchTerm) ? 'highlight' : ''}">${latest.kennzeichen}</td>
+                        <td class="${searchTerm && latest.nummer.toLowerCase().includes(searchTerm) ? 'highlight' : ''}">${latest.nummer}</td>
+                        <td style="color: #005b9c; font-weight: bold;">${latest.spannung} V <span class="badge-newest">NEU</span></td>
+                        <td style="font-size: 0.85em;">${latest.timestamp}</td>
+                        <td><button class="history-btn">${isOpen ? 'Schließen' : 'Historie (' + measurements.length + ')'}</button></td>
+                    </tr>
+                    <tr id="hist_${groupId}" class="history-row" style="display: ${isOpen ? 'table-row' : 'none'}">
+                        <td colspan="5">
+                            <div class="history-container">
+                                <strong>Mess-Historie für ${latest.kennzeichen} (${latest.nummer}):</strong>
+                                <div class="history-list">
+                `;
+
+                // Zeige alle Messungen außer der neuesten (die steht ja schon oben)
+                measurements.forEach((m, index) => {
+                    html += `
+                        <div class="history-item" style="${index === 0 ? 'background: #e8f5e9;' : ''}">
+                            <span>Messung vom ${m.timestamp}</span>
+                            <span><strong>${m.spannung} V</strong></span>
+                            <span style="color: #999; font-size: 0.8em;">ID: ${m.id}</span>
+                        </div>
+                    `;
+                });
+
+                html += `
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table>`;
+            document.getElementById("stack-content").innerHTML = html;
+        }
+
+        document.getElementById("searchInput").addEventListener("input", renderTable);
+
+        // Update alle 5 Sekunden (reicht für Historie)
+        setInterval(updateStackData, 5000);
         updateStackData();
     </script>
-
     <script src="js/main.js"></script>
 </body>
 </html>

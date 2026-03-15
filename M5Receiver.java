@@ -22,17 +22,21 @@ public class M5Receiver {
             try { startWebserver(); }
             catch (IOException e) {
                 System.err.println("Webserver konnte nicht starten: " + e.getMessage());
-                System.err.println("→ Five Server in VS Code stoppen!");
+                System.err.println("→ Port 8080 belegt? Falls ja, Prozess beenden!");
             }
         }).start();
 
-        SerialPort comPort = SerialPort.getCommPort("COM6");
+        // Arch Linux nutzt meist /dev/rfcomm0 für Bluetooth Serial
+        String portName = System.getProperty("os.name").toLowerCase().contains("linux") ? "/dev/rfcomm0" : "COM6";
+        SerialPort comPort = SerialPort.getCommPort(portName);
+        
         if (comPort.openPort()) {
-            System.out.println("Bluetooth verbunden auf COM6!");
+            System.out.println("Bluetooth verbunden auf " + portName + "!");
             lastData = "Verbunden, warte auf Daten...";
         } else {
-            System.out.println("COM6 nicht erreichbar – Webseite läuft trotzdem.");
-            lastData = "Bluetooth-Fehler: COM6 nicht gefunden.";
+            System.out.println(portName + " nicht erreichbar – Webinterface läuft trotzdem.");
+            System.out.println("Tipp: 'sudo rfcomm bind 0 <ESP32-MAC>' auf Arch Linux ausführen.");
+            lastData = "Bluetooth-Fehler: " + portName + " nicht gefunden.";
         }
 
         try {
@@ -67,7 +71,7 @@ public class M5Receiver {
             String sql = "CREATE TABLE IF NOT EXISTS measurements (" +
                          "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                          "value TEXT NOT NULL," +
-                         "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)";
+                         "timestamp DATETIME DEFAULT (datetime('now', 'localtime')))";
             try (Statement stmt = mainConn.createStatement()) { stmt.execute(sql); }
         } catch (Exception e) {
             System.err.println("Main DB Init Fehler: " + e.getMessage());
@@ -114,7 +118,7 @@ public class M5Receiver {
             String sql = "CREATE TABLE IF NOT EXISTS measurements (" +
                          "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                          "value TEXT NOT NULL," +
-                         "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)";
+                         "timestamp DATETIME DEFAULT (datetime('now', 'localtime')))";
             try (Statement stmt = veraltetConn.createStatement()) { stmt.execute(sql); }
         } catch (SQLException e) {
             System.err.println("Veraltete DB Init Fehler: " + e.getMessage());
@@ -165,16 +169,19 @@ public class M5Receiver {
         return sb.toString();
     }
 
-    // ====================== STACK DB ======================
+    // ====================== STACK DB (Strukturierte Suche) ======================
     private static void initStackSQLite() {
         try {
             stackConn = DriverManager.getConnection("jdbc:sqlite:m5_data_stack.db");
-            System.out.println("✅ Stack DB erfolgreich erstellt/verbunden: m5_data_stack.db");
+            System.out.println("✅ Stack DB verbunden: m5_data_stack.db");
 
+            // Wir erweitern die Tabelle um Kennzeichen, Nummer und Spannung
             String sql = "CREATE TABLE IF NOT EXISTS stack (" +
                          "stack_id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                         "value TEXT NOT NULL," +
-                         "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)";
+                         "kennzeichen TEXT," +
+                         "nummer TEXT," +
+                         "spannung TEXT," +
+                         "timestamp DATETIME DEFAULT (datetime('now', 'localtime')))";
             try (Statement stmt = stackConn.createStatement()) { stmt.execute(sql); }
         } catch (Exception e) {
             System.err.println("Stack DB Init Fehler: " + e.getMessage());
@@ -183,11 +190,21 @@ public class M5Receiver {
 
     private static void saveToStackSQLite(String data) {
         if (stackConn == null) return;
-        String sql = "INSERT INTO stack (value) VALUES (?)";
+        
+        // Erwartet Format: Kennzeichen;Nummer;Spannung
+        String[] parts = data.split(";");
+        if (parts.length < 3) {
+            System.err.println("Ungültiges Datenformat für Stack-DB: " + data);
+            return;
+        }
+
+        String sql = "INSERT INTO stack (kennzeichen, nummer, spannung) VALUES (?, ?, ?)";
         try (PreparedStatement pstmt = stackConn.prepareStatement(sql)) {
-            pstmt.setString(1, data);
+            pstmt.setString(1, parts[0]);
+            pstmt.setString(2, parts[1]);
+            pstmt.setString(3, parts[2]);
             pstmt.executeUpdate();
-            System.out.println("In Stack-DB gespeichert (stack_id +1): " + data);
+            System.out.println("In Stack-DB gespeichert: " + parts[0] + " | " + parts[1] + " | " + parts[2]);
         } catch (SQLException e) {
             System.err.println("Stack DB Speicher-Fehler: " + e.getMessage());
         }
@@ -197,11 +214,13 @@ public class M5Receiver {
         if (stackConn == null) return "Stack DB nicht verbunden.";
         StringBuilder sb = new StringBuilder();
         try (Statement stmt = stackConn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT stack_id, value, timestamp FROM stack ORDER BY stack_id DESC;")) {
+             ResultSet rs = stmt.executeQuery("SELECT * FROM stack ORDER BY stack_id DESC;")) {
             while (rs.next()) {
-                sb.append("Stack ID: ").append(rs.getInt("stack_id"))
-                  .append(" | Value: ").append(rs.getString("value"))
-                  .append(" | Timestamp: ").append(rs.getString("timestamp"))
+                sb.append("ID: ").append(rs.getInt("stack_id"))
+                  .append(" | K: ").append(rs.getString("kennzeichen"))
+                  .append(" | N: ").append(rs.getString("nummer"))
+                  .append(" | V: ").append(rs.getString("spannung"))
+                  .append(" | Zeit: ").append(rs.getString("timestamp"))
                   .append("\n");
             }
         } catch (SQLException e) {

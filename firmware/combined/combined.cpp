@@ -1,235 +1,145 @@
-#include "M5Atom.h"
+#include <Arduino.h>
 #include <SPI.h>
 #include <MFRC522.h>
 #include "BluetoothSerial.h"
-#include <FastLED.h>
 
-#define NUM_LEDS 25
-#define DATA_PIN 27
-CRGB leds[NUM_LEDS];
-bool wasConnected = false;
+// Pins für den RC522
+#define SS_PIN        5
+#define RST_PIN       22
+#define ANALOG_IN_PIN 34
 
-#define ADC_PIN 33
-
-#define SCK_PIN 32
-#define MISO_PIN 23
-#define MOSI_PIN 26
-#define SS_PIN 19
-#define RST_PIN 22
+// SPI Pins vom ESP32
+#define SCK_PIN  18
+#define MISO_PIN 19
+#define MOSI_PIN 23
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);
 BluetoothSerial SerialBT;
 
-void MatrixClear() {
-    for(int i = 0; i < NUM_LEDS; i++) leds[i] = CRGB::Black;
-    FastLED.show();
-}
-
-void MatrixSmile() {
-    MatrixClear();
-    leds[1]  = CRGB::Green; leds[3]  = CRGB::Green;
-    leds[12] = CRGB::Green;
-    leds[15] = CRGB::Green; leds[19] = CRGB::Green;
-    leds[21] = CRGB::Green; leds[22] = CRGB::Green; leds[23] = CRGB::Green;
-    FastLED.show();
-}
-
-void MatrixPress() {
-    MatrixClear();
-    for(int i = 0; i < 5; i++) leds[i] = CRGB::Red;
-    leds[12] = CRGB::Blue;
-    for(int i = 20; i < 25; i++) leds[i] = CRGB::Red;
-    FastLED.show();
-}
-
-void MatrixNFCReading() {
-    MatrixClear();
-    for(int i = 0; i < 25; i++) {
-        leds[i] = CRGB::Cyan;
-    }
-    FastLED.show();
-}
-
-void readNFCText() {
-    if (!mfrc522.PICC_IsNewCardPresent()) {
-        return;
-    }
-    
-    if (!mfrc522.PICC_ReadCardSerial()) {
-        return;
-    }
-    
-    Serial.println("\n--- KARTE ERKANNT ---");
-    
-    Serial.print("UID: ");
-    for (byte i = 0; i < mfrc522.uid.size; i++) {
-        Serial.printf("%02X", mfrc522.uid.uidByte[i]);
-        if (i < mfrc522.uid.size - 1) Serial.print(":");
-    }
-    Serial.println();
-    
-    MFRC522::PICC_Type piccType = mfrc522.PICC_GetType(mfrc522.uid.sak);
-    Serial.println(mfrc522.PICC_GetTypeName(piccType));
-    
-    MatrixNFCReading();
-    
-    String ndefText = "";
-    bool foundNDEF = false;
-    
-    for (byte sector = 1; sector < 16; sector++) {
-        byte trailerBlock = sector * 4 + 3;
-        
-        byte ndefKey[6] = {0xD3, 0xF7, 0xD3, 0xF7, 0xD3, 0xF7};
-        
-        mfrc522.PCD_StopCrypto1();
-        
-        MFRC522::StatusCode status = mfrc522.PCD_Authenticate(
-            MFRC522::PICC_CMD_MF_AUTH_KEY_A,
-            trailerBlock,
-            (MFRC522::MIFARE_Key*)ndefKey,
-            &(mfrc522.uid)
-        );
-        
-        if (status != MFRC522::STATUS_OK) {
-            status = mfrc522.PCD_Authenticate(
-                MFRC522::PICC_CMD_MF_AUTH_KEY_B,
-                trailerBlock,
-                (MFRC522::MIFARE_Key*)ndefKey,
-                &(mfrc522.uid)
-            );
-        }
-        
-        if (status == MFRC522::STATUS_OK) {
-            for (byte block = sector * 4; block < trailerBlock; block++) {
-                byte buffer[18];
-                byte size = sizeof(buffer);
-                
-                status = mfrc522.MIFARE_Read(block, buffer, &size);
-                
-                if (status == MFRC522::STATUS_OK) {
-                    if (buffer[0] == 0x03 && buffer[1] > 0) {
-                        foundNDEF = true;
-                        
-                        byte textLen = buffer[1] - 1;
-                        if (textLen > 0 && buffer[2] == 0x54) {
-                            for (byte i = 3; i < 3 + textLen && i < 16; i++) {
-                                if (buffer[i] >= 32 && buffer[i] <= 126) {
-                                    ndefText += (char)buffer[i];
-                                }
-                            }
-                        }
-                    }
-                    
-                    for (byte i = 0; i < 16; i++) {
-                        if (buffer[i] >= 32 && buffer[i] <= 126) {
-                            if (!foundNDEF) {
-                                ndefText += (char)buffer[i];
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        mfrc522.PCD_StopCrypto1();
-    }
-    
-    mfrc522.PICC_HaltA();
-    mfrc522.PCD_StopCrypto1();
-    
-    if (ndefText.length() > 0) {
-        Serial.println("Text: " + ndefText);
-        
-        if (SerialBT.hasClient()) {
-            SerialBT.println("NFC:" + ndefText);
-        }
-    } else {
-        Serial.println("Kein Text gefunden");
-        
-        if (SerialBT.hasClient()) {
-            SerialBT.println("NFC:NO_DATA");
-        }
-    }
-    
-    delay(2000);
-}
-
-void measureAndSendVoltage() {
-    Serial.println("Button gedrueckt!");
-    MatrixPress();
-    
-    int adcValue = analogRead(ADC_PIN);
-    float measuredVolt = (adcValue / 4095.0f) * 3.3f;
-    
-    SerialBT.printf("VOLT:%.2f\n", measuredVolt);
-    Serial.printf("Spannung: %.2f V\n", measuredVolt);
-    
-    delay(200);
-    MatrixSmile();
-}
+// Zwei Keys – einer für leere Chips, einer für Chips die mit NFC Tools beschrieben wurden
+MFRC522::MIFARE_Key keyDefault;
+MFRC522::MIFARE_Key keyNDEF;
 
 void setup() {
-    M5.begin(true, false, true);
-    delay(100);
-    
-    FastLED.addLeds<WS2812, DATA_PIN, GRB>(leds, NUM_LEDS);
-    FastLED.setBrightness(20);
-    
-    Serial.println("\n=== NFC + VOLTAGE METER ===");
-    
+    Serial.begin(115200);
+
+    // SPI auf 1MHz drosseln, sonst ist der ESP32 zu schnell für den RC522
     SPI.begin(SCK_PIN, MISO_PIN, MOSI_PIN, SS_PIN);
-    pinMode(SS_PIN, OUTPUT);
-    digitalWrite(SS_PIN, HIGH);
-    delay(50);
-    
+    SPI.setFrequency(1000000);
+
     mfrc522.PCD_Init();
-    delay(100);
-    mfrc522.PCD_SetAntennaGain(mfrc522.RxGain_max);
-    
-    byte v = mfrc522.PCD_ReadRegister(mfrc522.VersionReg);
-    Serial.printf("MFRC522 Version: 0x%02X\n", v);
-    
-    if (v == 0x00 || v == 0xFF) {
-        Serial.println("RC522 Fehler!");
-        leds[12] = CRGB::Red;
-        FastLED.show();
-        while(1) { delay(1000); }
+    delay(200); // kurz warten bis der RC522 bereit ist
+    mfrc522.PCD_SetAntennaGain(mfrc522.RxGain_max); // Antenne auf Maximum
+
+    SerialBT.begin("ESP32_Battery_Monitor"); // Bluetooth Name
+
+    // Standard Key für unformatierte Chips (alles 0xFF)
+    for (byte i = 0; i < 6; i++) keyDefault.keyByte[i] = 0xFF;
+
+    // NFC Forum Key – den setzt NFC Tools automatisch wenn man was draufschreibt
+    byte ndefKey[] = {0xD3, 0xF7, 0xD3, 0xF7, 0xD3, 0xF7};
+    for (byte i = 0; i < 6; i++) keyNDEF.keyByte[i] = ndefKey[i];
+
+    Serial.println("System bereit – Chip auflegen...");
+}
+
+// Spannung messen – Spannungsteiler 10k/20k auf Pin 34
+float getVoltage() {
+    int analogValue = analogRead(ANALOG_IN_PIN);
+    return (analogValue / 4095.0) * 3.3 * 3.0;
+}
+
+// Einen Block vom Chip lesen, gibt true zurück wenn es geklappt hat
+bool readBlock(byte blockAddr, byte* outBuffer, MFRC522::MIFARE_Key* key) {
+    MFRC522::MIFARE_Key localKey = *key;
+
+    // Erst authentifizieren, dann lesen
+    MFRC522::StatusCode status = mfrc522.PCD_Authenticate(
+        MFRC522::PICC_CMD_MF_AUTH_KEY_A, blockAddr, &localKey, &(mfrc522.uid)
+    );
+    if (status != MFRC522::STATUS_OK) return false;
+
+    byte size = 18;
+    status = mfrc522.MIFARE_Read(blockAddr, outBuffer, &size);
+    return (status == MFRC522::STATUS_OK);
+}
+
+// NDEF Daten parsen und den reinen Text rausziehen
+// NDEF ist das Format das NFC Tools auf den Chip schreibt
+String parseNDEF(byte* data, int dataLen) {
+    int i = 0;
+    while (i < dataLen) {
+        byte tag = data[i++];
+        if (tag == 0xFE) break;    // Ende der NDEF Daten
+        if (tag == 0x00) continue; // leere Stelle, überspringen
+
+        // Länge des Blocks auslesen
+        int len = (data[i] == 0xFF) ? (i++, (data[i] << 8) | data[i + 1]) : data[i++];
+
+        if (tag == 0x03 && len >= 5) { // 0x03 = NDEF Text Block
+            // Header überspringen und Sprachcode (z.B. "en") rausrechnen
+            int payloadLen = data[i + 2];
+            int langLen    = data[i + 4] & 0x3F;
+            int textStart  = i + 5 + langLen;
+            int textLen    = payloadLen - 1 - langLen;
+
+            // Nur druckbare Zeichen übernehmen
+            String result = "";
+            for (int t = 0; t < textLen && (textStart + t) < dataLen; t++) {
+                char c = (char)data[textStart + t];
+                if (c >= 0x20 && c < 0x7F) result += c;
+            }
+            return result;
+        }
+        i += len;
     }
-    
-    SerialBT.begin("M5_Erde");
-    Serial.println("Bereit. Karte oder Button...\n");
-    
-    leds[12] = CRGB::Blue;
-    FastLED.show();
-    delay(1000);
-    MatrixClear();
+    return "";
 }
 
 void loop() {
-    M5.update();
-    
-    if (SerialBT.hasClient()) {
-        if (!wasConnected) {
-            wasConnected = true;
-            Serial.println("Client verbunden");
-            MatrixSmile();
-        }
-        
-        if (M5.Btn.wasPressed()) {
-            measureAndSendVoltage();
+    // Warten bis ein Chip in die Nähe kommt
+    if (!mfrc522.PICC_IsNewCardPresent()) return;
+    delay(50); // kurz warten damit der Chip stabil liegt
+    if (!mfrc522.PICC_ReadCardSerial()) return;
+
+    // Blöcke 4 und 5 lesen (Block 6 ist Sektor-Trailer, kein Datenblock)
+    byte rawData[32];
+    bool success = true;
+
+    for (int b = 0; b < 2; b++) {
+        byte blockBuf[18];
+        byte blockAddr = 4 + b;
+
+        // Erst NDEF Key probieren, falls nicht klappt den Standard Key
+        if (readBlock(blockAddr, blockBuf, &keyNDEF) ||
+            readBlock(blockAddr, blockBuf, &keyDefault)) {
+            memcpy(rawData + (b * 16), blockBuf, 16);
+        } else {
+            success = false;
+            break;
         }
     }
-    else {
-        if (wasConnected) {
-            wasConnected = false;
-            Serial.println("Verbindung getrennt");
-            MatrixClear();
-            leds[12] = CRGB::Blue;
-            FastLED.show();
-        }
+
+    // Chip sauber trennen
+    mfrc522.PICC_HaltA();
+    mfrc522.PCD_StopCrypto1();
+
+    // Abbrechen wenn lesen fehlgeschlagen oder kein Text drauf
+    if (!success || parseNDEF(rawData, 32).length() == 0) {
+        delay(500);
+        return;
     }
-    
-    readNFCText();
-    
-    delay(50);
+
+    String ndefText = parseNDEF(rawData, 32);
+
+    // Falls auf dem Chip ein Komma ist (z.B. "H-BA,01") wird es zu Semikolon
+    int commaIndex = ndefText.indexOf(',');
+    if (commaIndex != -1) ndefText.setCharAt(commaIndex, ';');
+
+    // Alles zusammenbauen und per Bluetooth senden: Text;Spannung
+    String payload = ndefText + ";" + String(getVoltage(), 2);
+    SerialBT.println(payload);
+    Serial.println(payload);
+
+    delay(2000); // 2 Sekunden warten bevor nächster Scan
 }
